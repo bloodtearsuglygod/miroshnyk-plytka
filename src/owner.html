@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Заявки — Плитка.План</title>
+  <link rel="icon" type="image/svg+xml" href="/mark.svg">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="header"><div class="shell header-inner"><a href="/" class="brand"><img width="37" height="37" src="/mark.svg" alt=""> <span>Плитка<span class="brand-dot">.</span>План</span></a><a href="/" class="owner-link">Калькулятор</a></div></header>
+  <main class="shell owner-main">
+    <p class="eyebrow"><span></span> Кабинет владельца</p>
+    <h1>Заявки</h1>
+    <form class="owner-panel owner-login" id="owner-login">
+      <label for="owner-password">Пароль владельца</label><input class="owner-input" type="password" id="owner-password" required autocomplete="current-password" maxlength="250">
+      <button type="submit" class="primary">Открыть заявки</button>
+      <p class="form-error" id="owner-error" role="alert" hidden></p>
+    </form>
+    <section class="owner-panel" id="owner-results" aria-label="Список заявок" hidden>
+      <div class="owner-tools"><button type="button" class="primary" id="owner-refresh">Обновить</button><button type="button" class="owner-link" id="owner-exit">Выйти</button></div>
+      <p id="owner-message" class="owner-message" role="status"></p>
+      <div class="table-scroll"><table class="leads" hidden><thead><tr><th>Заявка</th><th>Клиент</th><th>Плитка и площадь</th><th>Стоимость</th><th>Комментарий</th></tr></thead><tbody></tbody></table></div>
+      <div class="owner-tools" id="owner-pages" hidden><button type="button" class="owner-link" id="owner-prev">Предыдущая</button><button type="button" class="owner-link" id="owner-next">Следующая</button></div>
+    </section>
+  </main>
+  <script type="module" src="/owner.js"></script>
+</body>
+</html>
