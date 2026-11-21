@@ -1,25 +1,33 @@
-import { Color, OrthographicCamera, Vector3 } from 'three';
+import { OrthographicCamera, Vector3 } from 'three';
 import { gsap } from 'gsap';
-import { decimal, layoutDimensions } from './catalog.js';
+import { areaLimits, decimal, layoutDimensions, minimumSide } from './catalog.js';
 
 const iso = { yaw: 0.65, pitch: 0.75 };
 const top = { yaw: 0, pitch: Math.PI / 2 - 0.001 };
+const defaultLayout = layoutDimensions(24);
+const defaultSpan = Math.hypot(defaultLayout.width, defaultLayout.depth);
+const tilePixels = 128;
+const grout = '#121212';
 
-export function createBlueprint(canvas, annotations) {
+export function createBlueprint(canvas, annotations, onResize) {
   const ctx = canvas.getContext('2d');
   const labels = annotations.getContext('2d');
   const camera = new OrthographicCamera();
   const point = new Vector3();
-  const stencil = new Color('#b1d0ff');
   const angle = { ...iso };
-  const geometry = { area: 24 };
+  const geometry = { ...defaultLayout };
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const parent = canvas.parentElement;
+  const handles = [...parent.querySelectorAll('[data-resize]')];
+  const handleVectors = new Map();
+  const patterns = new Map();
   let tile;
   let mode = '3d';
   let width = 0;
   let height = 0;
   let drag;
+  let sizeDrag;
+  let framedSpan;
 
   function project(x, y, z) {
     point.set(x, y, z).project(camera);
@@ -49,6 +57,116 @@ export function createBlueprint(canvas, annotations) {
     ctx.stroke();
   }
 
+  function tilePattern(material) {
+    if (patterns.has(material.id)) return patterns.get(material.id);
+    const surface = document.createElement('canvas');
+    surface.width = surface.height = tilePixels * 2;
+    const paint = surface.getContext('2d');
+
+    function makePattern(image) {
+      paint.fillStyle = material.fallbackColor;
+      paint.fillRect(0, 0, surface.width, surface.height);
+      if (image) {
+        // Mirroring the sample changes adjacent tiles while keeping the same material.
+        for (let row = 0; row < 2; row++) {
+          for (let column = 0; column < 2; column++) {
+            paint.save();
+            paint.translate((column ? 2 : 0) * tilePixels, (row ? 2 : 0) * tilePixels);
+            paint.scale(column ? -1 : 1, row ? -1 : 1);
+            paint.drawImage(image, 0, 0, tilePixels, tilePixels);
+            paint.restore();
+          }
+        }
+      }
+      paint.fillStyle = grout;
+      for (const offset of [0, tilePixels - 2, 2 * tilePixels - 2]) {
+        const lineSize = offset === tilePixels - 2 ? 4 : 2;
+        paint.fillRect(offset, 0, lineSize, surface.height);
+        paint.fillRect(0, offset, surface.width, lineSize);
+      }
+      const pattern = ctx.createPattern(surface, 'repeat');
+      patterns.set(material.id, pattern);
+      return pattern;
+    }
+
+    const sample = new Image();
+    sample.addEventListener('load', () => {
+      makePattern(sample);
+      if (tile?.id === material.id) render();
+    });
+    sample.src = `/textures/${material.id}.jpg`;
+    return makePattern();
+  }
+
+  function drawTiles(rim, roomWidth, roomDepth) {
+    const stepX = tile.size[0] / 100;
+    const stepZ = tile.size[1] / 100;
+    const [origin, right, , bottom] = rim;
+    const across = stepX / (roomWidth * tilePixels);
+    const down = stepZ / (roomDepth * tilePixels);
+    ctx.save();
+    ctx.transform((right[0] - origin[0]) * across, (right[1] - origin[1]) * across,
+      (bottom[0] - origin[0]) * down, (bottom[1] - origin[1]) * down, origin[0], origin[1]);
+    ctx.fillStyle = tilePattern(tile);
+    ctx.fillRect(0, 0, roomWidth / stepX * tilePixels, roomDepth / stepZ * tilePixels);
+    ctx.restore();
+
+    const columns = Math.ceil(roomWidth / stepX);
+    const rows = Math.ceil(roomDepth / stepZ);
+    path(ctx, rim, true);
+    if (columns + rows <= 320) {
+      // Draw crisp black seams over the texture when tiles are individually visible.
+      for (let column = 1; column < columns; column++) {
+        const x = column * stepX - roomWidth / 2;
+        ctx.moveTo(...project(x, 0, -roomDepth / 2));
+        ctx.lineTo(...project(x, 0, roomDepth / 2));
+      }
+      for (let row = 1; row < rows; row++) {
+        const z = row * stepZ - roomDepth / 2;
+        ctx.moveTo(...project(-roomWidth / 2, 0, z));
+        ctx.lineTo(...project(roomWidth / 2, 0, z));
+      }
+    }
+    ctx.lineWidth = 1.1;
+    ctx.strokeStyle = grout;
+    ctx.stroke();
+  }
+
+  function handleRange(axis, dimensions) {
+    const other = axis === 'width' ? dimensions.depth : dimensions.width;
+    return [Math.max(minimumSide, areaLimits.min / other), areaLimits.max / other];
+  }
+
+  function positionHandle(handle, edge, direction) {
+    const axis = handle.dataset.resize;
+    const [min, max] = handleRange(axis, geometry);
+    const center = project(0, 0, 0);
+    const vx = direction[0] - center[0];
+    const vy = direction[1] - center[1];
+    const length = Math.hypot(vx, vy);
+    const rotation = Math.atan2(vy, vx);
+    const offset = 9;
+    const x = Math.max(22, Math.min(width - 22, edge[0] + offset * vx / length));
+    const y = Math.max(22, Math.min(height - 22, edge[1] + offset * vy / length));
+    const cursor = Math.round(rotation / (Math.PI / 4));
+    handleVectors.set(handle, { vx, vy, length });
+    handle.style.left = `${x}px`;
+    handle.style.top = `${y}px`;
+    handle.style.setProperty('--handle-angle', `${rotation}rad`);
+    handle.style.setProperty('--resize-cursor', ['ew-resize', 'nwse-resize', 'ns-resize', 'nesw-resize'][(cursor + 4) % 4]);
+    handle.setAttribute('aria-valuemin', String(min));
+    handle.setAttribute('aria-valuemax', String(max));
+    handle.setAttribute('aria-valuenow', String(geometry[axis]));
+    handle.setAttribute('aria-valuetext', `${decimal.format(geometry[axis])} м`);
+    handle.hidden = false;
+  }
+
+  function changeDimension(axis, initial, value) {
+    const [min, max] = handleRange(axis, initial);
+    const step = Math.round(value * 100) / 100;
+    onResize({ ...initial, [axis]: Math.min(max, Math.max(min, step)) });
+  }
+
   function drawDimension(start, end, offsetStart, offsetEnd, value) {
     const color = '#c0d8ffb5';
     const dx = offsetEnd[0] - offsetStart[0];
@@ -65,7 +183,7 @@ export function createBlueprint(canvas, annotations) {
     let rotation = Math.atan2(dy, dx);
     if (rotation > Math.PI / 2 || rotation < -Math.PI / 2) rotation += Math.PI;
     labels.save();
-    labels.translate((offsetStart[0] + offsetEnd[0]) / 2, (offsetStart[1] + offsetEnd[1]) / 2);
+    labels.translate(offsetStart[0] + dx * .42, offsetStart[1] + dy * .42);
     labels.rotate(rotation);
     labels.font = '600 12px Consolas, monospace';
     labels.textAlign = 'center';
@@ -97,14 +215,15 @@ export function createBlueprint(canvas, annotations) {
     if (!width || !height || !tile) return;
     ctx.clearRect(0, 0, width, height);
     labels.clearRect(0, 0, width, height);
-    const [roomWidth, roomDepth] = layoutDimensions(geometry.area);
+    const { width: roomWidth, depth: roomDepth } = geometry;
     const halfX = roomWidth / 2;
     const halfZ = roomDepth / 2;
     const span = Math.hypot(roomWidth, roomDepth);
     const aspect = width / height;
-    const dynamicZoom = Math.min(1.09, Math.max(0.80, 1 + Math.log10(geometry.area / 24) * 0.14));
-    const visibleHeight = span / (Math.min(aspect * 0.76, 0.87) * dynamicZoom);
-    const lookAt = new Vector3(0, -span * 0.04, 0);
+    // Keep the scale fixed during the gesture so the drawing grows under the pointer.
+    framedSpan = sizeDrag?.framedSpan ?? Math.max(Math.min(defaultSpan, span * 1.55), span * .92);
+    const visibleHeight = framedSpan / Math.min(aspect * .71, .80);
+    const lookAt = new Vector3(0, -framedSpan * .035, 0);
     const horizontal = span * Math.cos(angle.pitch) * 2;
     camera.left = -visibleHeight * aspect / 2;
     camera.right = -camera.left;
@@ -123,7 +242,6 @@ export function createBlueprint(canvas, annotations) {
     const bottom = corners.map(([x, z]) => project(x, slabDepth, z));
     const shadow = corners.map(([x, z]) => project(x * 1.045, slabDepth * 2.1, z * 1.045));
     face(shadow, '#07265c65', '#8ab5ff44');
-    stencil.set(tile.blueprint);
     for (let index = 0; index < corners.length; index++) {
       const next = (index + 1) % corners.length;
       const [a, b] = rim[index];
@@ -132,42 +250,9 @@ export function createBlueprint(canvas, annotations) {
       if ((c - a) * (y - b) - (d - b) * (x - a) < 0) continue;
       face([rim[index], rim[next], bottom[next], bottom[index]], index % 2 ? '#1a4e9e' : '#103679', '#9fc5ffbb');
     }
-    face(rim, stencil.getStyle(), '#e5f0ff', 1.45);
+    drawTiles(rim, roomWidth, roomDepth);
 
-    const stepX = tile.size[0] / 100;
-    const stepZ = tile.size[1] / 100;
-    const countX = Math.ceil(roomWidth / stepX);
-    const countZ = Math.ceil(roomDepth / stepZ);
-    if (countX * countZ < 450) {
-      ctx.save();
-      path(ctx, rim, true);
-      ctx.clip();
-      for (let column = 0; column < countX; column++) {
-        for (let row = 0; row < countZ; row++) {
-          const x = -halfX + column * stepX;
-          const z = -halfZ + row * stepZ;
-          const value = Math.sin(column * 14.47 + row * 35.41);
-          path(ctx, [project(x, 0, z), project(x + stepX, 0, z), project(x + stepX, 0, z + stepZ), project(x, 0, z + stepZ)], true);
-          ctx.fillStyle = value < 0 ? `rgb(13 57 130 / ${-value * 0.13})` : `rgb(248 252 255 / ${value * 0.20})`;
-          ctx.fill();
-        }
-      }
-      ctx.restore();
-    }
-    for (let i = Math.max(1, Math.ceil(countX / 110)); i < countX; i += Math.max(1, Math.ceil(countX / 110))) {
-      const x = -halfX + i * stepX;
-      line(ctx, [project(x, 0, -halfZ), project(x, 0, halfZ)], '#25559d9e', .85);
-    }
-    for (let i = Math.max(1, Math.ceil(countZ / 110)); i < countZ; i += Math.max(1, Math.ceil(countZ / 110))) {
-      const z = -halfZ + i * stepZ;
-      line(ctx, [project(-halfX, 0, z), project(halfX, 0, z)], '#25559d9e', .85);
-    }
-    path(ctx, rim, true);
-    ctx.lineWidth = 1.45;
-    ctx.strokeStyle = '#e5f0ff';
-    ctx.stroke();
-
-    const offset = span * (width < 500 ? 0.105 : 0.085);
+    const offset = framedSpan * (width < 500 ? .15 : .11);
     const frontZ = Math.cos(angle.yaw) >= 0 ? halfZ : -halfZ;
     const frontX = Math.sin(angle.yaw) >= 0 ? halfX : -halfX;
     const outerZ = frontZ + Math.sign(frontZ) * offset;
@@ -175,6 +260,10 @@ export function createBlueprint(canvas, annotations) {
     drawDimension(project(-halfX, 0, frontZ), project(halfX, 0, frontZ), project(-halfX, 0, outerZ), project(halfX, 0, outerZ), `${decimal.format(roomWidth)} м`);
     drawDimension(project(frontX, 0, -halfZ), project(frontX, 0, halfZ), project(outerX, 0, -halfZ), project(outerX, 0, halfZ), `${decimal.format(roomDepth)} м`);
     drawAxes();
+    for (const handle of handles) {
+      if (handle.dataset.resize === 'width') positionHandle(handle, project(frontX, 0, 0), project(Math.sign(frontX), 0, 0));
+      else positionHandle(handle, project(0, 0, frontZ), project(0, 0, Math.sign(frontZ)));
+    }
   }
 
   function resize() {
@@ -199,7 +288,7 @@ export function createBlueprint(canvas, annotations) {
 
   new ResizeObserver(resize).observe(parent);
   canvas.addEventListener('pointerdown', event => {
-    if (mode !== '3d' || event.button !== 0) return;
+    if (mode !== '3d' || sizeDrag || event.button !== 0) return;
     gsap.killTweensOf(angle);
     drag = { id: event.pointerId, x: event.clientX, y: event.clientY, ...angle };
     canvas.setPointerCapture(event.pointerId);
@@ -212,16 +301,47 @@ export function createBlueprint(canvas, annotations) {
   });
   canvas.addEventListener('lostpointercapture', () => { drag = undefined; });
 
+  for (const handle of handles) {
+    const axis = handle.dataset.resize;
+    handle.addEventListener('pointerdown', event => {
+      if (sizeDrag || drag || event.button !== 0) return;
+      gsap.killTweensOf(geometry);
+      for (const tween of gsap.getTweensOf(angle)) tween.progress(1);
+      sizeDrag = { id: event.pointerId, x: event.clientX, y: event.clientY, initial: { width: geometry.width, depth: geometry.depth }, framedSpan, ...handleVectors.get(handle) };
+      handle.setPointerCapture(event.pointerId);
+    });
+    handle.addEventListener('pointermove', event => {
+      if (sizeDrag?.id !== event.pointerId) return;
+      const { x, y, vx, vy, length, initial } = sizeDrag;
+      const delta = ((event.clientX - x) * vx + (event.clientY - y) * vy) / (length * length);
+      changeDimension(axis, initial, initial[axis] + 2 * delta);
+    });
+    handle.addEventListener('lostpointercapture', event => {
+      if (sizeDrag?.id !== event.pointerId) return;
+      sizeDrag = undefined;
+      render();
+    });
+    handle.addEventListener('keydown', event => {
+      const step = event.shiftKey ? .5 : .1;
+      const [min, max] = handleRange(axis, geometry);
+      const actions = { ArrowUp: geometry[axis] + step, ArrowRight: geometry[axis] + step, ArrowDown: geometry[axis] - step, ArrowLeft: geometry[axis] - step, Home: min, End: max };
+      if (!Object.hasOwn(actions, event.key)) return;
+      event.preventDefault();
+      changeDimension(axis, { width: geometry.width, depth: geometry.depth }, actions[event.key]);
+    });
+  }
+
   return {
     setView,
-    update(nextTile, area) {
+    update(nextTile, dimensions, animate) {
       tile = nextTile;
-      if (reduceMotion.matches || geometry.area === area) {
-        geometry.area = area;
+      if (!animate || reduceMotion.matches || (geometry.width === dimensions.width && geometry.depth === dimensions.depth)) {
+        gsap.killTweensOf(geometry);
+        Object.assign(geometry, dimensions);
         render();
         return;
       }
-      gsap.to(geometry, { area, duration: .36, overwrite: true, ease: 'power2.out', onUpdate: render });
+      gsap.to(geometry, { ...dimensions, duration: .36, overwrite: true, ease: 'power2.out', onUpdate: render });
     },
   };
 }

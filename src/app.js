@@ -1,5 +1,5 @@
 import { gsap } from 'gsap';
-import { areaLimits, calculate, currency, decimal, money, parseArea, tiles } from './catalog.js';
+import { areaLimits, calculate, currency, decimal, layoutDimensions, money, parseArea, tiles } from './catalog.js';
 import { createBlueprint } from './blueprint.js';
 
 const get = selector => document.querySelector(selector);
@@ -12,15 +12,20 @@ const form = get('#quote-form');
 const formError = get('#form-error');
 const success = get('#quote-success');
 const submit = form.querySelector('button[type="submit"]');
-const blueprint = createBlueprint(get('#model'), get('#annotations'));
 const viewButtons = document.querySelectorAll('[data-view]');
 let tile = tiles[0];
 let lastArea = 24;
+let lastDimensions = layoutDimensions(lastArea);
 let view = '3d';
 let quote;
 let lastSubmission;
 
 const icon = name => `<svg aria-hidden="true"><use href="#icon-${name}"/></svg>`;
+const areaValue = value => decimal.format(value).replace(/\s/g, '');
+const blueprint = createBlueprint(get('#model'), get('#annotations'), dimensions => {
+  areaInput.value = areaValue(dimensions.width * dimensions.depth);
+  update({ dimensions, animate: false });
+});
 get('#tile-list').innerHTML = tiles.map((item, index) => `
   <label class="tile" title="${item.finish}">
     <input type="radio" name="tile" value="${item.id}" ${index === 0 ? 'checked' : ''}>
@@ -29,26 +34,27 @@ get('#tile-list').innerHTML = tiles.map((item, index) => `
     <span class="tile-label"><span class="tile-name">${item.name}</span><span class="tile-meta"><span>${item.size.join(' × ')} см</span><span class="tile-price">${money.format(item.price)}/м²</span></span></span>
   </label>`).join('');
 
-function update({ showError = false } = {}) {
+function update({ showError = false, dimensions, animate = true } = {}) {
   const area = parseArea(areaInput.value);
   areaError.hidden = area !== null || !showError;
   areaInput.setAttribute('aria-invalid', String(!areaError.hidden));
   quoteButton.disabled = area === null;
-  get('#sheet-code').textContent = `МОДУЛЬ ${tile.number}`;
   if (area === null) {
     get('#area-tag').textContent = 'Площадь не задана';
     get('#estimate-detail').textContent = 'Укажите площадь';
     get('#estimate-total').textContent = '—';
-    blueprint.update(tile, lastArea);
+    blueprint.update(tile, lastDimensions, animate);
     return;
   }
 
+  if (dimensions) lastDimensions = dimensions;
+  else if (area !== lastArea) lastDimensions = layoutDimensions(area, lastDimensions.width / lastDimensions.depth);
   lastArea = area;
   const estimate = calculate(tile, area, reserveInput.checked);
   get('#area-tag').textContent = `${decimal.format(area)} м²`;
   get('#estimate-detail').textContent = `${decimal.format(estimate.billedArea)} м² × ${money.format(tile.price)}`;
   get('#estimate-total').textContent = money.format(estimate.total);
-  blueprint.update(tile, area);
+  blueprint.update(tile, lastDimensions, animate);
 }
 
 get('#tile-list').addEventListener('change', event => {
@@ -61,7 +67,7 @@ areaInput.addEventListener('blur', () => update({ showError: true }));
 reserveInput.addEventListener('change', () => update({ showError: true }));
 document.querySelectorAll('[data-step]').forEach(button => button.addEventListener('click', () => {
   const next = (parseArea(areaInput.value) ?? lastArea) + Number(button.dataset.step);
-  areaInput.value = decimal.format(Math.min(areaLimits.max, Math.max(areaLimits.min, next))).replace(/\s/g, '');
+  areaInput.value = areaValue(Math.min(areaLimits.max, Math.max(areaLimits.min, next)));
   update();
 }));
 
@@ -69,7 +75,7 @@ function setView(nextView) {
   view = nextView;
   for (const button of viewButtons) button.setAttribute('aria-pressed', String(button.dataset.view === view));
   get('#drawing-mode').textContent = view === '3d' ? 'Изометрия' : 'План сверху';
-  get('#view-hint span').textContent = view === '3d' ? 'Перетащите, чтобы повернуть' : 'Ортогональная проекция';
+  get('#view-hint').textContent = view === '3d' ? 'Перетащите чертёж для поворота' : 'Ортогональная проекция';
   blueprint.setView(view);
 }
 

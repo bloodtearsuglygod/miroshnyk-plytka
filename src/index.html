@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f3f6fc">
   <meta name="description" content="Подберите плитку, посмотрите раскладку в 3D и рассчитайте стоимость материалов.">
-  <title>Плитка.План — демо-версия для продажи</title>
+  <title>Мірошник-Плитка — демо-версия для продажи</title>
   <link rel="icon" type="image/svg+xml" href="/mark.svg">
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css?v=layout">
 </head>
 <body>
   <svg class="symbols" xmlns="http://www.w3.org/2000/svg">
@@ -19,7 +19,7 @@
     <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
     <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="icon-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4L22 2ZM22 2 11 13"/></symbol>
-    <symbol id="icon-mouse" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="6"/><path d="M12 7v3"/></symbol>
+    <symbol id="icon-stretch" viewBox="0 0 24 24"><path d="M3 12h18M7 8l-4 4 4 4m10-8 4 4-4 4"/></symbol>
     <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
     <symbol id="icon-inbox" viewBox="0 0 24 24"><path d="M4 4h16l2 10v6H2v-6L4 4Zm-2 10h6l2 3h4l2-3h6"/></symbol>
   </svg>
@@ -27,7 +27,7 @@
     <div class="shell header-inner">
       <a class="brand" href="/">
         <span class="brand-icon"><svg aria-hidden="true"><use href="#icon-logo"/></svg></span>
-        <span class="brand-text">Плитка<span class="brand-dot">.</span>План<span class="brand-demo">Демо-версия для продажи</span></span>
+        <span class="brand-text" lang="uk">Мірошник<span class="brand-dot">-</span>Плитка<span class="brand-demo" lang="ru">Демо-версия для продажи</span></span>
       </a>
       <div class="header-right"><span class="header-caption">Инструмент для застройщиков</span><a class="owner-link" href="/owner"><svg aria-hidden="true"><use href="#icon-inbox"/></svg> <span>Заявки</span></a></div>
     </div>
@@ -52,10 +52,11 @@
         <div class="blueprint" id="blueprint">
           <span class="corner corner-tl"></span><span class="corner corner-tr"></span><span class="corner corner-bl"></span><span class="corner corner-br"></span>
           <canvas id="model" aria-hidden="true"></canvas><canvas id="annotations" aria-hidden="true"></canvas>
-          <span class="sheet-code" id="sheet-code">МОДУЛЬ MP-01</span>
+          <button class="resize-handle" type="button" role="slider" aria-label="Ширина укладки" aria-valuemin="0.1" aria-valuemax="10000" aria-valuenow="5.48" data-resize="width" title="Потяните, чтобы изменить ширину" hidden><svg aria-hidden="true"><use href="#icon-stretch"/></svg></button>
+          <button class="resize-handle" type="button" role="slider" aria-label="Длина укладки" aria-valuemin="0.1" aria-valuemax="10000" aria-valuenow="4.38" data-resize="depth" title="Потяните, чтобы изменить длину" hidden><svg aria-hidden="true"><use href="#icon-stretch"/></svg></button>
           <span class="area-tag" id="area-tag">24 м²</span>
         </div>
-        <footer class="drawing-footer"><span id="view-hint"><svg aria-hidden="true"><use href="#icon-mouse"/></svg> <span>Перетащите, чтобы повернуть</span></span><span class="drawing-note">Условные размеры</span></footer>
+        <footer class="drawing-footer"><span><svg aria-hidden="true"><use href="#icon-stretch"/></svg> <span>Тяните за ручки, чтобы изменить размеры</span></span><span class="drawing-note" id="view-hint">Перетащите чертёж для поворота</span></footer>
       </section>
 
       <section class="settings" aria-labelledby="settings-title">
@@ -75,7 +76,7 @@
         <button class="primary quote-button" id="quote-button" type="button">Оставить заявку <svg aria-hidden="true"><use href="#icon-send"/></svg></button>
       </section>
     </div>
-    <footer class="footer"><span>Плитка.План</span><span>Демонстрационный каталог · цены за материал</span></footer>
+    <footer class="footer"><span lang="uk">Мірошник-Плитка</span><span>Демонстрационный каталог · цены за материал</span></footer>
   </main>
 
   <dialog class="modal" id="quote-dialog" aria-labelledby="quote-title">
@@ -93,6 +94,6 @@
     </form>
     <div id="quote-success" class="success" hidden><span class="success-icon"><svg aria-hidden="true"><use href="#icon-check"/></svg></span><h2>Заявка отправлена</h2><p id="success-message"></p><button type="button" class="primary success-close">Вернуться к расчёту</button></div>
   </dialog>
-  <script type="module" src="/app.js"></script>
+  <script type="module" src="/app.js?v=layout"></script>
 </body>
 </html>
