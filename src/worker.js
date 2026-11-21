@@ -20,6 +20,14 @@ function json(data, status = 200) {
 const fail = (error, status) => json({ error }, status);
 const trim = value => typeof value === 'string' ? value.trim() : '';
 
+function allowPagesOrigin(response, origin) {
+  if (origin) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.append('Vary', 'Origin');
+  }
+  return response;
+}
+
 async function digest(value) {
   return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
 }
@@ -29,9 +37,7 @@ async function safeEqual(value, secret) {
   return left.reduce((result, byte, index) => result | (byte ^ right[index]), 0) === 0;
 }
 
-async function createLead(request, url, db) {
-  const origin = request.headers.get('origin');
-  if (origin && origin !== url.origin) return fail('Отправьте заявку со страницы калькулятора.', 403);
+async function createLead(request, db) {
   if (request.headers.get('content-type')?.split(';')[0] !== 'application/json') return fail('Неподдерживаемый формат заявки.', 415);
   const reader = request.body?.getReader();
   if (!reader) return fail('Заполните форму заявки.', 400);
@@ -97,9 +103,22 @@ async function listLeads(request, url, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const origin = request.headers.get('origin');
+    const pagesOrigin = origin && origin === env.PAGES_ORIGIN ? origin : null;
+    let submission = false;
     try {
       if (url.pathname === '/api/leads') {
-        if (request.method === 'POST') return await createLead(request, url, env.DB);
+        if (request.method === 'OPTIONS' && pagesOrigin && request.headers.get('Access-Control-Request-Method') === 'POST') {
+          return allowPagesOrigin(new Response(null, { status: 204, headers: {
+            'Access-Control-Allow-Methods': 'POST',
+            'Access-Control-Allow-Headers': 'Content-Type',
+          } }), pagesOrigin);
+        }
+        if (request.method === 'POST') {
+          if (origin && origin !== url.origin && !pagesOrigin) return fail('Отправьте заявку со страницы калькулятора.', 403);
+          submission = true;
+          return allowPagesOrigin(await createLead(request, env.DB), pagesOrigin);
+        }
         if (request.method === 'GET') return await listLeads(request, url, env);
         return fail('Метод не поддерживается.', 405);
       }
@@ -117,7 +136,7 @@ export default {
       } });
     } catch (error) {
       console.error(error);
-      return fail('Сервис временно недоступен. Попробуйте ещё раз.', 503);
+      return allowPagesOrigin(fail('Сервис временно недоступен. Попробуйте ещё раз.', 503), submission ? pagesOrigin : null);
     }
   },
 };

@@ -4,10 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f3f6fc">
+  <meta name="lead-endpoint" content="/api/leads">
   <meta name="description" content="Подберите плитку, посмотрите раскладку в 3D и рассчитайте стоимость материалов.">
   <title>Мірошник-Плитка — демо-версия для продажи</title>
-  <link rel="icon" type="image/svg+xml" href="/mark.svg">
-  <link rel="stylesheet" href="/style.css?v=layout">
+  <link rel="icon" type="image/svg+xml" href="./mark.svg">
+  <link rel="stylesheet" href="./style.css?v=layout">
 </head>
 <body>
   <svg class="symbols" xmlns="http://www.w3.org/2000/svg">
@@ -25,7 +26,7 @@
   </svg>
   <header class="header">
     <div class="shell header-inner">
-      <a class="brand" href="/">
+      <a class="brand" href="./">
         <span class="brand-icon"><svg aria-hidden="true"><use href="#icon-logo"/></svg></span>
         <span class="brand-text" lang="uk">Мірошник<span class="brand-dot">-</span>Плитка<span class="brand-demo" lang="ru">Демо-версия для продажи</span></span>
       </a>
@@ -94,6 +95,6 @@
     </form>
     <div id="quote-success" class="success" hidden><span class="success-icon"><svg aria-hidden="true"><use href="#icon-check"/></svg></span><h2>Заявка отправлена</h2><p id="success-message"></p><button type="button" class="primary success-close">Вернуться к расчёту</button></div>
   </dialog>
-  <script type="module" src="/app.js?v=layout"></script>
+  <script type="module" src="./app.js?v=pages"></script>
 </body>
 </html>

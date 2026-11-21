@@ -11,6 +11,7 @@ const dialog = get('#quote-dialog');
 const form = get('#quote-form');
 const formError = get('#form-error');
 const success = get('#quote-success');
+const leadEndpoint = get('meta[name="lead-endpoint"]').content;
 const submit = form.querySelector('button[type="submit"]');
 const viewButtons = document.querySelectorAll('[data-view]');
 let tile = tiles[0];
@@ -29,7 +30,7 @@ const blueprint = createBlueprint(get('#model'), get('#annotations'), dimensions
 get('#tile-list').innerHTML = tiles.map((item, index) => `
   <label class="tile" title="${item.finish}">
     <input type="radio" name="tile" value="${item.id}" ${index === 0 ? 'checked' : ''}>
-    <img src="/textures/${item.id}.jpg" alt="" width="360" height="150">
+    <img src="./textures/${item.id}.jpg" alt="" width="360" height="150">
     <span class="tile-check">${icon('check')}</span>
     <span class="tile-label"><span class="tile-name">${item.name}</span><span class="tile-meta"><span>${item.size.join(' × ')} см</span><span class="tile-price">${money.format(item.price)}/м²</span></span></span>
   </label>`).join('');
@@ -124,7 +125,7 @@ form.addEventListener('submit', async event => {
   submit.disabled = true;
   submit.textContent = 'Отправляем…';
   try {
-    const response = await fetch('/api/leads', {
+    const response = await fetch(leadEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, id: lastSubmission.id }),

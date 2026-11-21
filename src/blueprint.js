@@ -94,7 +94,7 @@ export function createBlueprint(canvas, annotations, onResize) {
       makePattern(sample);
       if (tile?.id === material.id) render();
     });
-    sample.src = `/textures/${material.id}.jpg`;
+    sample.src = `./textures/${material.id}.jpg`;
     return makePattern();
   }
 

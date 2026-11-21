@@ -33,7 +33,7 @@ const DB = {
 };
 
 const port = Number(process.env.PORT ?? 4173);
-const env = { DB, OWNER_PASSWORD: process.env.OWNER_PASSWORD };
+const env = { DB, OWNER_PASSWORD: process.env.OWNER_PASSWORD, PAGES_ORIGIN: process.env.PAGES_ORIGIN };
 createServer(async (incoming, outgoing) => {
   try {
     const host = /^localhost(?::\d+)?$/i.test(incoming.headers.host ?? '') ? incoming.headers.host : `127.0.0.1:${port}`;
