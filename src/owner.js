@@ -12,6 +12,7 @@ const prev = get('#owner-prev');
 const next = get('#owner-next');
 const refresh = get('#owner-refresh');
 const dateFormat = new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
+const previousMoney = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 });
 let password = '';
 let page = 0;
 let activeRequest;
@@ -26,7 +27,7 @@ function renderRow(lead) {
   customer.append(lead.name, document.createElement('br'), link);
   const reserve = lead.reserve ? ` · ${decimal.format(lead.billed_area)} м² с запасом` : '';
   row.insertCell().textContent = `${lead.tile_name} · ${decimal.format(lead.area)} м²${reserve}`;
-  row.insertCell().textContent = money.format(lead.total);
+  row.insertCell().textContent = (lead.currency === 'RUB' ? previousMoney : money).format(lead.total);
   const comment = row.insertCell();
   comment.className = 'comment';
   comment.textContent = lead.comment || '—';

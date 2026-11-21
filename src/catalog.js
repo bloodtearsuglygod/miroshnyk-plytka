@@ -5,7 +5,8 @@ export const tiles = [
   { id: 'navy', name: 'Синий сланец', finish: 'Камень · рельеф', size: [20, 60], price: 2890, blueprint: '#5484c7', number: 'MP-04' },
 ];
 
-export const money = new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 });
+export const currency = 'UAH';
+export const money = new Intl.NumberFormat('ru-RU', { style: 'currency', currency, maximumFractionDigits: 0 });
 export const decimal = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
 export const areaLimits = { min: 0.1, max: 10000 };
 

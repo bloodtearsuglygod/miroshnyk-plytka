@@ -28,6 +28,8 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .brand-icon { color: white; background: var(--blue); }
 .brand-icon svg { width: 22px; height: 22px; }
 .brand-dot { color: var(--blue); }
+.brand-text { line-height: 1.1; }
+.brand-demo { display: block; margin-top: 3px; color: #184ac2; font-size: .78rem; font-weight: 700; letter-spacing: 0; white-space: normal; }
 .header-right { gap: 26px; font-size: 14px; }
 .header-caption { color: var(--muted); }
 .owner-link { gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 9px; font-weight: 700; }
@@ -160,7 +162,7 @@ h1 em { color: var(--blue); font-style: normal; }
 }
 @media (max-width: 720px) {
   .shell { width: calc(100% - 28px); }
-  .header-inner { min-height: 60px; }
+  .header-inner { min-height: 60px; gap: 12px; }
   .header-caption, .desktop-break { display: none; }
   .intro { padding-block: 27px 23px; }
   .intro > p { font-size: 1rem; margin-top: 11px; }

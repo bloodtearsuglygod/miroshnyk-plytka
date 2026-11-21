@@ -1,4 +1,4 @@
-import { calculate, parseArea, tiles } from './catalog.js';
+import { calculate, currency, parseArea, tiles } from './catalog.js';
 import { assets } from './generated-assets.js';
 
 const types = {
@@ -60,6 +60,7 @@ async function createLead(request, url, db) {
   if (!/^\+?[\d\s()-]+$/.test(phone) || phoneLength < 7 || phoneLength > 15 || phone.length > 30) return fail('Проверьте номер телефона.', 400);
   if (comment.length > 1200) return fail('Сократите комментарий до 1200 символов.', 400);
   if (data.consent !== true) return fail('Подтвердите согласие на передачу контактных данных.', 400);
+  if (data.currency !== currency) return fail('Валюта каталога обновилась. Обновите страницу и проверьте сумму заявки.', 409);
 
   const id = trim(data.id).toLowerCase();
   const tile = tiles.find(item => item.id === data.tileId);
@@ -67,11 +68,11 @@ async function createLead(request, url, db) {
   if (!tile || area === null || typeof data.reserve !== 'boolean' || !uuid.test(id)) return fail('Пересчитайте проект и отправьте заявку ещё раз.', 400);
   const reserve = Number(data.reserve);
   const { billedArea, total } = calculate(tile, area, data.reserve);
-  const bytes = await digest(JSON.stringify([name, phone, comment, tile.id, area, reserve, billedArea, tile.price, total]));
+  const bytes = await digest(JSON.stringify([name, phone, comment, tile.id, area, reserve, billedArea, tile.price, total, currency]));
   const key = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
-  const insert = await db.prepare(`INSERT INTO leads (id, created_at, name, phone, comment, tile_name, area, reserve, billed_area, price, total, payload_key)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`)
-    .bind(id, new Date().toISOString(), name, phone, comment, tile.name, area, reserve, billedArea, tile.price, total, key).run();
+  const insert = await db.prepare(`INSERT INTO leads (id, created_at, name, phone, comment, tile_name, area, reserve, billed_area, price, total, payload_key, currency)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING`)
+    .bind(id, new Date().toISOString(), name, phone, comment, tile.name, area, reserve, billedArea, tile.price, total, key, currency).run();
   if (!insert.meta.changes) {
     const existing = await db.prepare('SELECT payload_key FROM leads WHERE id = ?').bind(id).first();
     if (existing?.payload_key !== key) return fail('Заявка с этим номером уже существует. Обновите страницу и попробуйте ещё раз.', 409);
@@ -88,7 +89,7 @@ async function listLeads(request, url, env) {
   const page = Number(url.searchParams.get('page') ?? 0);
   if (!Number.isSafeInteger(page) || page < 0 || page > 10000) return fail('Такой страницы нет.', 400);
   const size = 50;
-  const { results } = await env.DB.prepare(`SELECT id, created_at, name, phone, comment, tile_name, area, reserve, billed_area, price, total
+  const { results } = await env.DB.prepare(`SELECT id, created_at, name, phone, comment, tile_name, area, reserve, billed_area, price, total, currency
     FROM leads ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`).bind(size + 1, page * size).all();
   return json({ leads: results.slice(0, size), hasMore: results.length > size });
 }

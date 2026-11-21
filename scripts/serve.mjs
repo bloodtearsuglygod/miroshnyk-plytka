@@ -12,6 +12,10 @@ if (!database.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name
   const migration = await readFile('drizzle/0000_leads.sql', 'utf8');
   database.exec(`BEGIN; ${migration} COMMIT;`);
 }
+if (!database.prepare("SELECT 1 FROM pragma_table_info('leads') WHERE name = 'currency'").get()) {
+  const migration = await readFile('drizzle/0001_lead_currency.sql', 'utf8');
+  database.exec(`BEGIN; ${migration} COMMIT;`);
+}
 
 const DB = {
   prepare(sql) {

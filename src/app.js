@@ -1,5 +1,5 @@
 import { gsap } from 'gsap';
-import { areaLimits, calculate, decimal, money, parseArea, tiles } from './catalog.js';
+import { areaLimits, calculate, currency, decimal, money, parseArea, tiles } from './catalog.js';
 import { createBlueprint } from './blueprint.js';
 
 const get = selector => document.querySelector(selector);
@@ -79,7 +79,7 @@ get('.reset').addEventListener('click', () => setView('3d'));
 quoteButton.addEventListener('click', () => {
   const area = parseArea(areaInput.value);
   if (area === null) return;
-  quote = { tileId: tile.id, area, reserve: reserveInput.checked };
+  quote = { tileId: tile.id, area, reserve: reserveInput.checked, currency };
   const estimate = calculate(tile, area, quote.reserve);
   const reserveLabel = quote.reserve ? ` · ${decimal.format(estimate.billedArea)} м² с запасом` : '';
   get('#quote-summary').textContent = `${tile.name} · ${decimal.format(area)} м²${reserveLabel} · ${money.format(estimate.total)}`;
